@@ -104,7 +104,7 @@ export default function Home() {
           <br />
           CIRCL hash lookup is a public API to lookup hash values against known database of files.
           <br />
-          Enter hash below to get all the data on that file's hash.
+          Enter hash below to get all the data on that file&apos;s hash.
           <br />
           <HR />
           
