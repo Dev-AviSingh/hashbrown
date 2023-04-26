@@ -1,118 +1,131 @@
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
-
+import { useState, useEffect } from 'react'
 const inter = Inter({ subsets: ['latin'] })
 
+const HR = (props) =>{
+  return <hr className ={ `border-gray-600 my-3 -mx-${props.parentPadding?props.parentPadding:"5"} ${props.color?props.color:""}`}/>
+}
+
+function getHashType(hash){
+  const isMD5 = /^[a-f0-9]{32}$/i.test(hash);
+  const isSHA1 = /^[a-f0-9]{40}$/i.test(hash);
+  const isSHA256 = /^[a-f0-9]{64}$/i.test(hash);
+  const isSHA512 = /^[a-f0-9]{128}$/i.test(hash);
+
+  if (!(isMD5 || isSHA1 || isSHA256 || isSHA512)){
+    return ""
+  }
+
+  let url = ""
+  url = isMD5?"md5":""
+  url = isSHA1?"sha1":url||""
+  url = isSHA256?"sha256":url||""
+  url = isSHA512?"sha512":url||""
+
+  return url
+}
+
+// Given by chat gpt
+function flattenObject(obj, prefix = "") {
+  let result = {};
+  for (let key in obj) {
+    let propName = prefix + key;
+    if (typeof obj[key] === "object") {
+      Object.assign(result, flattenObject(obj[key], propName + "."));
+    } else {
+      result[propName] = obj[key];
+    }
+  }
+  return result;
+}
+
+const PropertyItem = (props) => {
+  let [hovering, setHovering] = useState(false)
+  return <div className = {`p-2 border-b border-gray-700 ${hovering?"text-center":""}`} onMouseEnter = {() => setHovering(true)} onMouseLeave = {() => setHovering(false)}>
+  {!hovering?((props.name)?props.name:"???"):""} <span className = {`${!hovering?"float-right text-right w-80 truncate":""}`}> {props.value?props.value:"???"} </span>
+</div>
+}
+
 export default function Home() {
+  let [currentHash, setCurrentHash] = useState("")
+  let [userHash, setUserHash] = useState("")
+
+  const defaultHashStatus = "Enter hash: "
+  let [hashStatus, setHashStatus] = useState(defaultHashStatus)
+  
+  let [properties, setProperties] = useState([])
+  function hashChangeHandler(userHash){
+    setUserHash(userHash)
+    if(userHash === ""){
+      setHashStatus(defaultHashStatus)
+      return
+    }
+
+    let hashType = getHashType(userHash)
+    if(hashType === ""){
+      setHashStatus("Not a hash")
+      return
+    }else{
+      setHashStatus(`Hash Type : ${hashType}`)
+    }
+    setCurrentHash(userHash)
+  }
+
+  useEffect(() => {
+    if(currentHash === "")
+      return
+    console.log(currentHash)
+    fetch(`/api/check/${currentHash}`)
+    .then(response => response.json())
+    .then(json => {
+      json = flattenObject(json)
+      let propertyItems = []
+
+      for(let name in json){
+        if(name.includes("Description"))
+        propertyItems.unshift(<PropertyItem key = {name} name = {name} value = {json[name]}/>)
+        else
+        propertyItems.push(<PropertyItem key = {name} name = {name} value = {json[name]}/>)
+      }
+
+      setProperties(propertyItems)
+    })
+  }, [currentHash])
+
   return (
     <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
+      className="bg-gray-900 p-5 px-20"
     >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+        <div
+          className="h-screen bg-black rounded-lg p-5 text-white text-xl font-mono border-white">
+          <span className='text-4xl font-bold'> Hash Brown </span>
+          <br />
+          <br />
+          CIRCL hash lookup is a public API to lookup hash values against known database of files.
+          <br />
+          Enter hash below to get all the data on that file's hash.
+          <br />
+          <HR />
+          
+
+          <div >
+            {hashStatus}
+            <input className="float-right text-black" type = "text" value = {userHash} onChange = {(e) => hashChangeHandler(e.target.value)}></input>
+          </div>
+          <HR />
+
+          <div className="rounded-lg bg-gray-800 mt-5 text-justfy overflow-y-scroll h-80">
+            <div className = "p-2 border-b border-gray-700">
+              Property Name:<span className = "float-right"> Property Value</span> 
+            </div>
+            {properties}
+            <div>
+              &nbsp;
+            </div>
+          </div>
+
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
     </main>
   )
 }
